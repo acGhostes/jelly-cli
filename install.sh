@@ -1,16 +1,18 @@
 #!/bin/sh
 set -eu
-# Usage: sh install.sh --base-url https://example.com/jelly-cli [--install-deps]
-base_url='https://saltvaultvideo.com/jelly-cli'
+# Usage: sh install.sh [--install-deps] [--github-auth] [--uninstall]
+base_url='https://github.com/acGhostes/jelly-cli/releases/download'
+github_auth=no
 install_deps=no
-release_version='1.0.0'
+release_version='1.0.1'
 uninstall=no
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --base-url) [ "$#" -ge 2 ] || exit 2; base_url=$2; shift 2 ;;
+        --github-auth) github_auth=yes; shift ;;
         --install-deps) install_deps=yes; shift ;;
         --uninstall) uninstall=yes; shift ;;
-        *) echo 'Usage: install.sh --base-url HTTPS_URL [--install-deps] [--uninstall]' >&2; exit 2 ;;
+        *) echo 'Usage: install.sh [--install-deps] [--github-auth] [--base-url HTTPS_RELEASE_ROOT] [--uninstall]' >&2; exit 2 ;;
     esac
 done
 if [ "$uninstall" = no ]; then
@@ -40,7 +42,7 @@ if [ "$install_deps" = yes ] && [ "$uninstall" = no ]; then
     fi
 fi
 command -v python3 >/dev/null 2>&1 || { echo 'Install Python 3.10+ first (or use --install-deps).' >&2; exit 1; }
-python3 - "$base_url" "$uninstall" "$release_version" <<'PY'
+python3 - "$base_url" "$uninstall" "$release_version" "$github_auth" <<'PY'
 import hashlib
 import os
 import platform
@@ -48,13 +50,14 @@ from pathlib import Path
 import shlex
 import shutil
 import sys
+import subprocess
 import tempfile
 import urllib.request
 import zipfile
 
 if sys.version_info < (3, 10):
     raise SystemExit('Python 3.10+ is required.')
-base, uninstall, version = sys.argv[1:]
+base, uninstall, version, github_auth = sys.argv[1:]
 root = Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'jelly-cli'
 bin_dir = Path(os.environ.get('JELLY_CLI_BIN_DIR', Path.home() / '.local/bin'))
 launcher = bin_dir / 'jelly-cli'
@@ -75,7 +78,7 @@ architectures = {'x86_64': 'x86_64', 'amd64': 'x86_64', 'aarch64': 'aarch64', 'a
 architecture = architectures.get(platform.machine().lower())
 if not architecture:
     raise SystemExit('Unsupported Linux architecture: ' + platform.machine())
-asset = f'releases/{version}/jelly-cli-linux-{architecture}.pyz'
+asset = f'v{version}/jelly-cli-linux-{architecture}.pyz'
 print(f'Installing jelly-cli {version} for Linux {architecture}')
 for dependency in ('fzf', 'mpv'):
     if not shutil.which(dependency):
@@ -87,6 +90,15 @@ class HTTPSOnly(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(request, fp, code, msg, headers, newurl)
 opener = urllib.request.build_opener(HTTPSOnly())
 def fetch(name):
+    if github_auth == 'yes':
+        if not shutil.which('gh'):
+            raise ValueError('Install GitHub CLI and run gh auth login before using --github-auth.')
+        result = subprocess.run(['gh', 'release', 'download', 'v' + version,
+                                 '--repo', 'acGhostes/jelly-cli', '--pattern', name.rsplit('/', 1)[-1],
+                                 '--output', '-'], capture_output=True, timeout=120)
+        if result.returncode:
+            raise ValueError('GitHub download failed. Check gh auth status and access to the published release.')
+        return result.stdout
     with opener.open(base.rstrip('/') + '/' + name, timeout=60) as response:
         return response.read()
 try:

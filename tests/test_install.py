@@ -19,14 +19,14 @@ class InstallerTests(unittest.TestCase):
         subprocess.run([sys.executable, 'scripts/build_release.py'], cwd=ROOT, check=True, capture_output=True)
         cls.archive = (ROOT / 'dist/jelly-cli.pyz').read_bytes()
 
-    def install(self, base, bad=False, uninstall=False):
+    def install(self, base, bad=False, uninstall=False, auth=False):
         def download(url, timeout):
             expected = {'x86_64': 'x86_64', 'amd64': 'x86_64', 'arm64': 'aarch64', 'aarch64': 'aarch64', 'armv7l': 'armv7'}[platform.machine().lower()]
-            self.assertIn(f'/releases/1.0.0/jelly-cli-linux-{expected}.pyz', url)
+            self.assertIn(f'/releases/download/v1.0.1/jelly-cli-linux-{expected}.pyz', url)
             if url.endswith('.sha256'):
                 return io.BytesIO((('0' * 64 if bad else hashlib.sha256(self.archive).hexdigest()) + '  jelly-cli.pyz\n').encode())
             return io.BytesIO(self.archive)
-        with patch.dict(os.environ, {'XDG_DATA_HOME': str(base / 'data'), 'JELLY_CLI_BIN_DIR': str(base / 'bin')}), patch.object(sys, 'argv', ['install', 'https://saltvaultvideo.com/jelly-cli', 'yes' if uninstall else 'no', '1.0.0']), patch('shutil.which', return_value='/usr/bin/tool'), patch('urllib.request.OpenerDirector.open', side_effect=download):
+        with patch.dict(os.environ, {'XDG_DATA_HOME': str(base / 'data'), 'JELLY_CLI_BIN_DIR': str(base / 'bin')}), patch.object(sys, 'argv', ['install', 'https://github.com/acGhostes/jelly-cli/releases/download', 'yes' if uninstall else 'no', '1.0.1', 'yes' if auth else 'no']), patch('shutil.which', return_value='/usr/bin/tool'), patch('urllib.request.OpenerDirector.open', side_effect=download):
             exec(compile(INSTALLER, 'install.sh', 'exec'), {'__name__': '__main__'})
 
     def test_install_update_checksum_and_uninstall(self):
@@ -35,7 +35,7 @@ class InstallerTests(unittest.TestCase):
             self.install(base)
             launcher = base / 'bin/jelly-cli'
             result = subprocess.run([str(launcher), '--version'], check=True, capture_output=True, text=True)
-            self.assertIn('jelly-cli 1.0.0', result.stdout)
+            self.assertIn('jelly-cli 1.0.1', result.stdout)
             self.install(base)
             previous = (base / 'data/jelly-cli/jelly-cli.pyz').read_bytes()
             with self.assertRaisesRegex(SystemExit, 'checksum'):
@@ -75,10 +75,24 @@ class InstallerTests(unittest.TestCase):
         for machine, expected in [('x86_64', 'x86_64'), ('arm64', 'aarch64'), ('aarch64', 'aarch64'), ('armv7l', 'armv7')]:
             with self.subTest(machine=machine), tempfile.TemporaryDirectory() as directory, patch('platform.machine', return_value=machine), patch('platform.system', return_value='Linux'):
                 self.install(Path(directory))
-                self.assertTrue((ROOT / f'dist/releases/1.0.0/jelly-cli-linux-{expected}.pyz').exists())
+                self.assertTrue((ROOT / f'dist/releases/1.0.1/jelly-cli-linux-{expected}.pyz').exists())
         with tempfile.TemporaryDirectory() as directory, patch('platform.machine', return_value='mips'):
             with self.assertRaisesRegex(SystemExit, 'Unsupported Linux architecture'):
                 self.install(Path(directory))
+
+    def test_authenticated_download(self):
+        def download(command, **kwargs):
+            self.assertEqual(command[:6], ['gh', 'release', 'download', 'v1.0.1', '--repo', 'acGhostes/jelly-cli'])
+            self.assertEqual(command[-2:], ['--output', '-'])
+            asset = command[7]
+            payload = ((hashlib.sha256(self.archive).hexdigest() + '  release.pyz\n').encode()
+                       if asset.endswith('.sha256') else self.archive)
+            return subprocess.CompletedProcess(command, 0, stdout=payload)
+        with tempfile.TemporaryDirectory() as directory, patch('subprocess.run', side_effect=download) as calls:
+            base = Path(directory)
+            self.install(base, auth=True)
+            self.assertEqual(calls.call_count, 2)
+            self.assertEqual((base / 'data/jelly-cli/jelly-cli.pyz').read_bytes(), self.archive)
 
     def test_shell_syntax(self):
         subprocess.run(['sh', '-n', str(ROOT / 'install.sh')], check=True)

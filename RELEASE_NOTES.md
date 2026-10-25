@@ -1,11 +1,9 @@
-jelly-cli 1.0 keeps browsing in your terminal and plays your Jellyfin library in a normal mpv window.
+jelly-cli 1.0.1 moves installation and updates to GitHub Releases.
 
-- Continue Watching, Next Up, favorites, recently added, movies, TV and search.
-- Media details with Resume, Start Over, favorite and watched-state controls.
-- Separate server/account profiles with saved login and playback preferences.
-- Fullscreen, starting volume, audio/subtitle languages and optional episode autoplay.
-- Playback start/progress/stop reporting, resume and full-duration EOF reporting.
-- Bounded read retries, recovery menus, image-free lists and cached page navigation.
-- Reproducible checksum-verified releases and dependency diagnostics.
+- Public installation downloads install.sh from the latest published GitHub release.
+- The installer fetches version-pinned architecture assets and verifies SHA-256.
+- Private repositories can use GitHub CLI with --github-auth.
+- Existing logins, preferences and playback behavior are unchanged.
+- The personal-domain download service is no longer required.
 
-Install using the README. Existing default-profile logins are retained. Requires Linux, Python 3.10+, fzf, mpv, and a graphical session for video. Direct streaming only; server transcoding, downloads and native Windows support are not implemented. Tests cover local HTTP fixtures and real mpv under Xvfb; live-server/GPU testing remains environment-dependent.
+See README.md for installation commands. Python 3.10+, fzf and mpv are required.

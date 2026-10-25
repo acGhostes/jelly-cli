@@ -1,5 +1,11 @@
 # Changes
 
+## 1.0.1
+
+- Download the installer, version-pinned application and checksums from GitHub Releases.
+- Add --github-auth for private-repository installations through GitHub CLI.
+- Document GitHub publication and persist the requirement to push every update.
+
 ## 1.0.0
 
 - New home sections: Next Up, Favorites and Recently Added.

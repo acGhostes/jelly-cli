@@ -9,7 +9,7 @@ Search and browse with the keyboard, then watch in a normal mpv window with subt
 Linux · Python 3.10+ · fzf · mpv
 
 ```sh
-curl --proto '=https' --proto-redir '=https' -fsSL https://saltvaultvideo.com/jelly-cli -o /tmp/jelly-cli-install.sh
+curl --proto '=https' --proto-redir '=https' -fsSL https://github.com/acGhostes/jelly-cli/releases/latest/download/install.sh -o /tmp/jelly-cli-install.sh
 sh /tmp/jelly-cli-install.sh --install-deps
 jelly-cli
 ```
@@ -20,7 +20,18 @@ The first launch asks for your server URL, username and password. Later launches
 
 The launcher installs to `~/.local/bin/jelly-cli`. If that directory is not on PATH, follow the printed shell-profile instruction or run it by full path. App files live in `~/.local/share/jelly-cli`. No desktop launcher is created. The installer chooses x86-64, ARM64 or ARMv7 and verifies its HTTPS download with SHA-256. Assets contain portable Python code; Python and mpv are not bundled.
 
-**Release status:** 1.0.0 is prepared in this repository. The domain serves the version most recently deployed by its operator; check `jelly-cli --version` after installation.
+The public install command requires a public repository and a published release. The installer downloads the matching version's executable and checksum from GitHub Releases; it never contacts the former personal-domain download endpoint.
+
+For private-repository access, install GitHub CLI and authenticate with an account that can read this repository:
+
+```sh
+gh auth login
+gh release download --repo acGhostes/jelly-cli --pattern install.sh --output /tmp/jelly-cli-install.sh --clobber
+sh /tmp/jelly-cli-install.sh --install-deps --github-auth
+jelly-cli
+```
+
+The GitHub CLI handles authentication; no token is put in the install command. `--base-url` can override the public release-download root for mirrors using `vVERSION/ASSET` paths. `--github-auth` always uses this GitHub repository.
 
 ## Daily use
 

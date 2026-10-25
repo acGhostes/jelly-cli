@@ -18,4 +18,4 @@ class ReleaseTests(unittest.TestCase):
             self.assertIn('jelly_cli/playback.py', archive.namelist())
             self.assertFalse(any('session' in name or '__pycache__' in name or '.venv' in name for name in archive.namelist()))
         output = subprocess.run([sys.executable, 'dist/jelly-cli.pyz', '--version'], cwd=root, check=True, capture_output=True, text=True)
-        self.assertEqual(output.stdout.strip(), 'jelly-cli 1.0.0')
+        self.assertEqual(output.stdout.strip(), 'jelly-cli 1.0.1')
